@@ -13,7 +13,7 @@ Issue this commands to build the plugin inside the Gerrit's source tree:
   cd gerrit
   git submodule init
   git submodule update
-  git clone https://gerrit.googlesource.com/plugins/cloud-notifications
+  git clone https://gerrit.googlesource.com/plugins/cloud-notifications plugins/cloud-notifications
   buck build plugins/cloud-notifications
 ```
 
