@@ -119,7 +119,7 @@ public class FcmUploaderWorker {
             String data = gson.toJson(submit.request);
             if (log.isDebugEnabled()) {
                 log.debug(String.format(
-                        "[%] Sending fcm notification: %s", pluginName, data));
+                        "[%s] Sending fcm notification: %s", pluginName, data));
             }
 
             URL url = new URL(config.serverUrl);
@@ -164,6 +164,11 @@ public class FcmUploaderWorker {
                 }
 
                 // Process the server response
+                if (log.isDebugEnabled()) {
+                    log.debug(String.format(
+                        "[%s] fcm response: %s",
+                        pluginName, response.toString()));
+                }
                 processResponse(conn, submit, gson.fromJson(
                         response.toString(), FcmResponseInfo.class));
 
@@ -223,7 +228,7 @@ public class FcmUploaderWorker {
                 case "NotRegistered":
                     // Remove this client from the database
                     if (log.isDebugEnabled()) {
-                        log.debug("[%] %d - %s - %s is not registered. " +
+                        log.debug("[%s] %d - %s - %s is not registered. " +
                                 "Remove from db.",
                                 pluginName, submit.accountId,
                                 submit.device,
@@ -272,7 +277,7 @@ public class FcmUploaderWorker {
         }
 
         if (log.isDebugEnabled()) {
-            log.debug("[%] Retry fcm notification to %s after %d seconds",
+            log.debug("[%s] Retry fcm notification to %s after %d seconds",
                     pluginName, submit.request.to, retryAfter);
         }
         this.delayedExecutor.schedule(new Runnable() {
