@@ -21,7 +21,9 @@ import java.util.Locale;
 import java.util.TimeZone;
 
 import com.google.gerrit.extensions.restapi.BadRequestException;
+import com.google.gerrit.extensions.restapi.ResourceNotFoundException;
 import com.google.gerrit.extensions.restapi.RestModifyView;
+import com.ruesga.gerrit.plugins.fcm.Configuration;
 import com.ruesga.gerrit.plugins.fcm.DatabaseManager;
 import com.ruesga.gerrit.plugins.fcm.rest.CloudNotificationInfo;
 import com.ruesga.gerrit.plugins.fcm.rest.CloudNotificationInput;
@@ -37,14 +39,17 @@ public class PostToken
     private final Provider<CurrentUser> self;
     private final DatabaseManager db;
     private final SimpleDateFormat formatter;
+    private final Configuration config;
 
     @Inject
     public PostToken(
             Provider<CurrentUser> self,
-            DatabaseManager db) {
+            DatabaseManager db,
+            Configuration config) {
         super();
         this.self = self;
         this.db = db;
+        this.config = config;
 
         formatter = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss.SSS", Locale.US);
         formatter.setTimeZone(TimeZone.getTimeZone("UTC"));
@@ -53,7 +58,12 @@ public class PostToken
     @Override
     public CloudNotificationInfo apply(
             DeviceResource rsrc, CloudNotificationInput input)
-            throws BadRequestException {
+            throws BadRequestException, ResourceNotFoundException {
+        // Check if plugin is configured
+        if (!config.isEnabled()) {
+            throw new ResourceNotFoundException("not configured!");
+        }
+
         // Request are only valid from the current authenticated user
         if (self.get() == null || self.get() != rsrc.getUser()) {
             throw new BadRequestException("invalid account!");

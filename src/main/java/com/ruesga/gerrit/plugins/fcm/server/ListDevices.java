@@ -18,26 +18,39 @@ package com.ruesga.gerrit.plugins.fcm.server;
 import java.util.List;
 
 import com.google.gerrit.extensions.restapi.BadRequestException;
+import com.google.gerrit.extensions.restapi.ResourceNotFoundException;
 import com.google.gerrit.extensions.restapi.RestReadView;
 import com.google.gerrit.server.CurrentUser;
 import com.google.gerrit.server.account.AccountResource;
 import com.google.inject.Inject;
 import com.google.inject.Provider;
 import com.google.inject.Singleton;
+import com.ruesga.gerrit.plugins.fcm.Configuration;
 
 @Singleton
 public class ListDevices implements RestReadView<AccountResource> {
+
     private final Provider<CurrentUser> self;
+    private final Configuration config;
 
     @Inject
-    public ListDevices(Provider<CurrentUser> self) {
+    public ListDevices(
+            Provider<CurrentUser> self,
+            Configuration config) {
         super();
         this.self = self;
+        this.config = config;
     }
 
     @Override
     public List<DeviceResource> apply(AccountResource rsrc)
-            throws BadRequestException {
+            throws BadRequestException, ResourceNotFoundException {
+        // Check if plugin is configured
+        if (!config.isEnabled()) {
+            throw new ResourceNotFoundException("not configured!");
+        }
+
+        // Request are only valid from the current authenticated user
         if (self.get() == null || self.get() != rsrc.getUser()) {
             throw new BadRequestException("invalid account!");
         }

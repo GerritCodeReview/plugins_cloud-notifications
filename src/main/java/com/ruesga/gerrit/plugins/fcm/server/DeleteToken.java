@@ -16,8 +16,10 @@
 package com.ruesga.gerrit.plugins.fcm.server;
 
 import com.google.gerrit.extensions.restapi.BadRequestException;
+import com.google.gerrit.extensions.restapi.ResourceNotFoundException;
 import com.google.gerrit.extensions.restapi.Response;
 import com.google.gerrit.extensions.restapi.RestModifyView;
+import com.ruesga.gerrit.plugins.fcm.Configuration;
 import com.ruesga.gerrit.plugins.fcm.DatabaseManager;
 import com.ruesga.gerrit.plugins.fcm.server.DeleteToken.Input;
 import com.google.gerrit.server.CurrentUser;
@@ -33,19 +35,27 @@ public class DeleteToken implements RestModifyView<TokenResource, Input> {
 
     private final Provider<CurrentUser> self;
     private final DatabaseManager db;
+    private final Configuration config;
 
     @Inject
     public DeleteToken(
             Provider<CurrentUser> self,
-            DatabaseManager db) {
+            DatabaseManager db,
+            Configuration config) {
         super();
         this.self = self;
         this.db = db;
+        this.config = config;
     }
 
     @Override
     public Response<?> apply(TokenResource rsrc, Input input)
-            throws BadRequestException {
+            throws BadRequestException, ResourceNotFoundException {
+        // Check if plugin is configured
+        if (!config.isEnabled()) {
+            throw new ResourceNotFoundException("not configured!");
+        }
+
         // Request are only valid from the current authenticated user
         if (self.get() == null || self.get() != rsrc.getUser()) {
             throw new BadRequestException("invalid account!");
