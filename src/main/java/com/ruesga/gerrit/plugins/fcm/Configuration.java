@@ -36,10 +36,12 @@ public class Configuration {
     public static final String PROP_DATABASE_PATH = "databasePath";
     public static final String PROP_SERVER_URL = "serverUrl";
     public static final String PROP_SERVER_TOKEN = "serverToken";
+    public static final String PROP_SERVER_SENDER_ID = "serverSenderId";
 
     public final String databasePath;
     public final String serverToken;
     public final String serverUrl;
+    public final String serverSenderId;
 
     @Inject
     public Configuration(
@@ -48,6 +50,7 @@ public class Configuration {
         PluginConfig cfg = cfgFactory.getFromGerritConfig(pluginName);
         this.databasePath = cfg.getString(PROP_DATABASE_PATH);
         this.serverToken = cfg.getString(PROP_SERVER_TOKEN);
+        this.serverSenderId = cfg.getString(PROP_SERVER_SENDER_ID);
         String serverUrl = cfg.getString(PROP_SERVER_URL);
         if (serverUrl == null || serverUrl.isEmpty()) {
             serverUrl = Configuration.DEFAULT_SERVER_URL;
@@ -60,6 +63,7 @@ public class Configuration {
     }
 
     public boolean isEnabled() {
-        return this.serverToken != null && !this.serverToken.isEmpty();
+        return (this.serverToken != null && !this.serverToken.isEmpty()) &&
+                (this.serverSenderId != null && !this.serverSenderId.isEmpty());
     }
 }

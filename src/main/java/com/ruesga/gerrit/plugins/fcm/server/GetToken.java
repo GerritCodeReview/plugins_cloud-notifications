@@ -18,6 +18,7 @@ package com.ruesga.gerrit.plugins.fcm.server;
 import com.google.gerrit.extensions.restapi.BadRequestException;
 import com.google.gerrit.extensions.restapi.ResourceNotFoundException;
 import com.google.gerrit.extensions.restapi.RestReadView;
+import com.ruesga.gerrit.plugins.fcm.Configuration;
 import com.ruesga.gerrit.plugins.fcm.DatabaseManager;
 import com.ruesga.gerrit.plugins.fcm.rest.CloudNotificationInfo;
 import com.google.gerrit.server.CurrentUser;
@@ -30,19 +31,28 @@ public class GetToken implements RestReadView<TokenResource> {
 
     private final Provider<CurrentUser> self;
     private final DatabaseManager db;
+    private final Configuration config;
 
     @Inject
     public GetToken(
             Provider<CurrentUser> self,
-            DatabaseManager db) {
+            DatabaseManager db,
+            Configuration config) {
         super();
         this.self = self;
         this.db = db;
+        this.config = config;
     }
 
     @Override
     public CloudNotificationInfo apply(TokenResource rsrc)
             throws BadRequestException, ResourceNotFoundException {
+        // Check if plugin is configured
+        if (!config.isEnabled()) {
+            throw new ResourceNotFoundException("not configured!");
+        }
+
+        // Request are only valid from the current authenticated user
         if (self.get() == null || self.get() != rsrc.getUser()) {
             throw new BadRequestException("invalid account!");
         }

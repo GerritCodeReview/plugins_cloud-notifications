@@ -15,44 +15,36 @@
  */
 package com.ruesga.gerrit.plugins.fcm.server;
 
-import com.google.gerrit.extensions.restapi.BadRequestException;
 import com.google.gerrit.extensions.restapi.ResourceNotFoundException;
 import com.google.gerrit.extensions.restapi.RestReadView;
+import com.google.gerrit.server.config.ConfigResource;
 import com.ruesga.gerrit.plugins.fcm.Configuration;
-import com.ruesga.gerrit.plugins.fcm.rest.CloudNotificationInfo;
-import com.google.gerrit.server.CurrentUser;
+import com.ruesga.gerrit.plugins.fcm.rest.CloudNotificationsConfigInfo;
 import com.google.inject.Inject;
-import com.google.inject.Provider;
 import com.google.inject.Singleton;
 
 @Singleton
-public class GetDevice implements RestReadView<DeviceResource> {
+public class GetCloudNotificationsConfigInfo
+        implements RestReadView<ConfigResource> {
 
-    private final Provider<CurrentUser> self;
     private final Configuration config;
 
     @Inject
-    public GetDevice(
-            Provider<CurrentUser> self,
-            Configuration config) {
+    public GetCloudNotificationsConfigInfo(Configuration config) {
         super();
-        this.self = self;
         this.config = config;
     }
 
     @Override
-    public CloudNotificationInfo apply(DeviceResource rsrc)
-            throws BadRequestException, ResourceNotFoundException {
+    public CloudNotificationsConfigInfo apply(ConfigResource rsrc)
+            throws ResourceNotFoundException {
         // Check if plugin is configured
         if (!config.isEnabled()) {
             throw new ResourceNotFoundException("not configured!");
         }
 
-        // Request are only valid from the current authenticated user
-        if (self.get() == null || self.get() != rsrc.getUser()) {
-            throw new BadRequestException("invalid account!");
-        }
-
-        throw new BadRequestException("unsupported!");
+        CloudNotificationsConfigInfo info = new CloudNotificationsConfigInfo();
+        info.senderId = this.config.serverSenderId;
+        return info;
     }
 }

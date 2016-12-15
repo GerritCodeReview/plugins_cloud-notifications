@@ -6,13 +6,37 @@ the Gerrit instance how send the notification. In addition, an app can configure
 
 A client application can unregistered a device (and stop receiving notifications) from the Gerrit instance using the *Unregister Cloud Notification* method.
 
-Client applications must use a combintion of fcm device identifier + a unique local account token, so they can register to listen notification for different accounts on this Gerrit instance. Token must 
+Client applications must use a combination of fcm device identifier + a unique local account token, so they can register to listen notification for different accounts on this Gerrit instance. Token must 
 
 
 REST API
 --------
 
-This plugin addes new methods to the /accounts Gerrit REST Api entry point to allow a device to register/unregister to receive event notification in this gerrit instance.
+This plugin adds new methods to the /accounts Gerrit REST Api entry point to allow a device to register/unregister to receive event notification in this Gerrit instance.
+
+***
+
+**Get Cloud Notifications Config**
+
+`'GET /config/server/cloud-notifications'`
+
+Retrieve the cloud notifications server configuration of the Gerrit server instance.
+
+*Request*
+This method returns a *CloudNotificationsConfigInfo* entity (see below).
+
+    GET /config/server/cloud-notifications
+
+*Response*
+
+    HTTP1.1 200 OK
+    Content-Disposition: attachment
+    Content-Type: application/json; charset=UTF-8
+    
+    )]}'
+    {
+        "senderId": "322112333"
+    }
 
 ***
 
@@ -20,7 +44,7 @@ This plugin addes new methods to the /accounts Gerrit REST Api entry point to al
 
 `'GET /accounts/{account-id}/devices/{device-id}/tokens'`
 
-Retrieves a list of registered tokens by a device hold by the Gerrit server instance.
+Retrieve a list of registered tokens by a device hold by the Gerrit server instance.
 
 *Request*
 This request requires an authenticated call and only returns information if account-id is the authenticated account. This method returns a list of *CloudNotificationInfo* entities (see below).
@@ -50,7 +74,7 @@ This request requires an authenticated call and only returns information if acco
 
 `'GET /accounts/{account-id}/devices/{device-id}/tokens/{token}'`
 
-Retrieves a registered device information hold by the Gerrit server instance.
+Retrieve a registered device information hold by the Gerrit server instance.
 
 *Request*
 This request requires an authenticated call and only returns information if account-id is the authenticated account. This method returns a *CloudNotificationInfo* entity (see below).
@@ -125,6 +149,14 @@ This request requires an authenticated call and is only valid if account-id is t
 *Response*
 
     HTTP/1.1 204 No Content
+
+***
+
+**CloudNotificationsConfigInfo**
+
+Entity with information about the cloud notifications server configuration.
+
+`senderId: The Firebase Cloud Messaging server identifier.`
 
 ***
 

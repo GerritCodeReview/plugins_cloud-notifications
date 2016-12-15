@@ -16,6 +16,7 @@
 package com.ruesga.gerrit.plugins.fcm;
 
 import static com.google.gerrit.server.account.AccountResource.ACCOUNT_KIND;
+import static com.google.gerrit.server.config.ConfigResource.CONFIG_KIND;
 import static com.ruesga.gerrit.plugins.fcm.server.DeviceResource.DEVICE_KIND;
 import static com.ruesga.gerrit.plugins.fcm.server.TokenResource.TOKEN_KIND;
 
@@ -52,6 +53,7 @@ import com.ruesga.gerrit.plugins.fcm.handlers.RevisionCreatedEventHandler;
 import com.ruesga.gerrit.plugins.fcm.handlers.TopicEditedEventHandler;
 import com.ruesga.gerrit.plugins.fcm.server.DeleteToken;
 import com.ruesga.gerrit.plugins.fcm.server.Devices;
+import com.ruesga.gerrit.plugins.fcm.server.GetCloudNotificationsConfigInfo;
 import com.ruesga.gerrit.plugins.fcm.server.GetToken;
 import com.ruesga.gerrit.plugins.fcm.server.PostToken;
 import com.ruesga.gerrit.plugins.fcm.server.Tokens;
@@ -60,6 +62,7 @@ import com.ruesga.gerrit.plugins.fcm.workers.FcmUploaderWorker;
 
 public class ApiModule extends RestApiModule {
 
+    public static final String CONFIG_ENTRY_POINT = "cloud-notifications";
     public static final String DEVICES_ENTRY_POINT = "devices";
     public static final String TOKEN_ENTRY_POINT = "tokens";
 
@@ -100,6 +103,8 @@ public class ApiModule extends RestApiModule {
         // Configure the Rest API
         DynamicMap.mapOf(binder(), DEVICE_KIND);
         DynamicMap.mapOf(binder(), TOKEN_KIND);
+        get(CONFIG_KIND, CONFIG_ENTRY_POINT).to(
+                GetCloudNotificationsConfigInfo.class);
         child(ACCOUNT_KIND, DEVICES_ENTRY_POINT).to(Devices.class);
         child(DEVICE_KIND, TOKEN_ENTRY_POINT).to(Tokens.class);
         get(TOKEN_KIND).to(GetToken.class);

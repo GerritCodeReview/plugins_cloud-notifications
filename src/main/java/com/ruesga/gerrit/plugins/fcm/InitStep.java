@@ -47,8 +47,8 @@ public class InitStep implements com.google.gerrit.pgm.init.api.InitStep {
 
         String serverUrl = ui.readString(
                 Configuration.DEFAULT_SERVER_URL, "Firebase Server Url");
-        String serverToken = ui.readString(
-                "", "Firebase Server Token");
+        String serverToken = ui.readString("", "Firebase Server Token");
+        String serverSenderId = ui.readString("", "Firebase Server Sender Id");
         String databasePath = ui.readString(
                 "", "Database path (leave empty for default)");
 
@@ -56,12 +56,18 @@ public class InitStep implements com.google.gerrit.pgm.init.api.InitStep {
             serverUrl = Configuration.DEFAULT_SERVER_URL;
         }
         cfg.setString("plugin", pluginName,
-                Configuration.PROP_SERVER_TOKEN, serverUrl);
+                Configuration.PROP_SERVER_URL, serverUrl);
         if (serverToken != null && serverToken.isEmpty()) {
             cfg.unset("plugin", pluginName, Configuration.PROP_SERVER_TOKEN);
         } else {
             cfg.setString("plugin", pluginName,
                     Configuration.PROP_SERVER_TOKEN, serverToken);
+        }
+        if (serverSenderId != null && serverSenderId.isEmpty()) {
+            cfg.unset("plugin", pluginName, Configuration.PROP_SERVER_SENDER_ID);
+        } else {
+            cfg.setString("plugin", pluginName,
+                    Configuration.PROP_SERVER_SENDER_ID, serverSenderId);
         }
         if (databasePath != null && databasePath.isEmpty()) {
             cfg.unset("plugin", pluginName, Configuration.PROP_DATABASE_PATH);
