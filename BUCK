@@ -38,7 +38,6 @@ gerrit_plugin(
     'Gerrit-ApiType: plugin',
     'Gerrit-ApiVersion: 2.14-SNAPSHOT',
     'Gerrit-Module: com.ruesga.gerrit.plugins.fcm.ApiModule',
-    'Gerrit-InitStep: com.ruesga.gerrit.plugins.fcm.InitStep',
     'Implementation-Title: Firebase Cloud Notifications Plugin',
     'Implementation-Vendor: Jorge Ruesga',
     'Implementation-URL: https://gerrit.googlesource.com/plugins/cloud-notifications',
