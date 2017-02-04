@@ -17,8 +17,8 @@ package com.ruesga.gerrit.plugins.fcm.handlers;
 
 import com.google.gerrit.extensions.annotations.PluginName;
 import com.google.gerrit.extensions.events.TopicEditedListener;
-import com.google.gerrit.reviewdb.client.AccountProjectWatch.NotifyType;
 import com.google.gerrit.reviewdb.server.ReviewDb;
+import com.google.gerrit.server.account.WatchConfig.NotifyType;
 import com.google.gerrit.server.IdentifiedUser.GenericFactory;
 import com.google.gerrit.server.config.AllProjectsName;
 import com.google.gerrit.server.query.change.ChangeQueryBuilder;
