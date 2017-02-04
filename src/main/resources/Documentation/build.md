@@ -1,26 +1,35 @@
 Build
 =====
 
-This plugin is built with Buck.
+This plugin is built using Bazel.
+Only the Gerrit in-tree build is supported.
 
-Build in Gerrit tree
---------------------
-
-Issue this commands to build the plugin inside the Gerrit's source tree:
+Clone or link this plugin to the plugins directory of Gerrit's source
+tree.
 
 ```
   git clone https://gerrit.googlesource.com/gerrit
-  cd gerrit
-  git submodule init
-  git submodule update
-  git clone https://gerrit.googlesource.com/plugins/cloud-notifications plugins/cloud-notifications
-  buck build plugins/cloud-notifications
+  git clone https://gerrit.googlesource.com/plugins/@PLUGIN@
+  cd gerrit/plugins
+  ln -s ../../@PLUGIN@ .
+```
+
+From Gerrit source tree issue the command:
+
+```
+  bazel build plugins/@PLUGIN@
 ```
 
 The output is created in
 
 ```
-  buck-out/gen/plugins/cloud-notifications/cloud-notifications.jar
+  bazel-genfiles/plugins/@PLUGIN@/@PLUGIN@.jar
 ```
 
-Check out the Gerrit Plugin API [documentation](https://gerrit-review.googlesource.com/Documentation/dev-buck.html#_extension_and_plugin_api_jar_files)
+This project can be imported into the Eclipse IDE.
+Add the plugin name to the `CUSTOM_PLUGINS` set in
+Gerrit core in `tools/bzl/plugins.bzl`, and execute:
+
+```
+  ./tools/eclipse/project.py
+```
