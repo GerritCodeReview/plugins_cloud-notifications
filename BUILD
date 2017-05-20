@@ -14,49 +14,27 @@
 # limitations under the License.
 #
 
-include_defs('//bucklets/gerrit_plugin.bucklet')
-include_defs('//bucklets/java_sources.bucklet')
-include_defs('//bucklets/maven_jar.bucklet')
+load("//tools/bzl:plugin.bzl", "gerrit_plugin")
 
 SOURCES = glob(['src/main/java/**/*.java'])
 RESOURCES = glob(['src/main/resources/**/*'])
 
-PROVIDED_DEPS = [
-  '//lib:gson',
-  ':h2'
-]
-
 DEPS = [
+  '//lib:h2'
 ]
 
 gerrit_plugin(
-  name = 'cloud-notifications',
+  name = "cloud-notifications",
   srcs = SOURCES,
   resources = RESOURCES,
   manifest_entries = [
     'Gerrit-PluginName: cloud-notifications',
-    'Gerrit-ApiType: plugin',
     'Gerrit-ApiVersion: 2.14-SNAPSHOT',
     'Gerrit-Module: com.ruesga.gerrit.plugins.fcm.ApiModule',
     'Implementation-Title: Firebase Cloud Notifications Plugin',
-    'Implementation-Vendor: Jorge Ruesga',
     'Implementation-URL: https://gerrit.googlesource.com/plugins/cloud-notifications',
     'Implementation-Version: 2.14-SNAPSHOT'
   ],
-  deps = DEPS,
-  provided_deps = PROVIDED_DEPS
-)
-
-java_sources(
-  name = 'cloud-notifications-sources',
-  srcs = SOURCES + RESOURCES
-)
-
-maven_jar(
-  name = 'h2',
-  id = 'com.h2database:h2:1.3.176',
-  license = 'Apache2.0',
-  exclude_java_sources = True,
-  visibility = [],
+  deps = DEPS
 )
 

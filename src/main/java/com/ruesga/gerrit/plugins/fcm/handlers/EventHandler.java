@@ -19,6 +19,7 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 import org.apache.commons.lang.StringUtils;
@@ -32,16 +33,19 @@ import com.google.gerrit.extensions.common.AccountInfo;
 import com.google.gerrit.extensions.common.ChangeInfo;
 import com.google.gerrit.extensions.events.ChangeEvent;
 import com.google.gerrit.extensions.events.RevisionEvent;
-import com.google.gerrit.reviewdb.client.AccountProjectWatch;
-import com.google.gerrit.reviewdb.client.AccountProjectWatch.NotifyType;
-import com.google.gerrit.reviewdb.server.ReviewDb;
+import com.google.gerrit.reviewdb.client.Account;
 import com.google.gerrit.server.CurrentUser;
 import com.google.gerrit.server.IdentifiedUser;
 import com.google.gerrit.server.IdentifiedUser.GenericFactory;
+import com.google.gerrit.server.account.AccountState;
+import com.google.gerrit.server.account.CapabilityControl;
+import com.google.gerrit.server.account.WatchConfig.NotifyType;
+import com.google.gerrit.server.account.WatchConfig.ProjectWatchKey;
 import com.google.gerrit.server.config.AllProjectsName;
 import com.google.gerrit.server.query.Predicate;
 import com.google.gerrit.server.query.QueryParseException;
 import com.google.gerrit.server.query.QueryResult;
+import com.google.gerrit.server.query.account.InternalAccountQuery;
 import com.google.gerrit.server.query.change.ChangeData;
 import com.google.gerrit.server.query.change.ChangeQueryBuilder;
 import com.google.gerrit.server.query.change.ChangeQueryProcessor;
@@ -62,7 +66,7 @@ public abstract class EventHandler {
     private final AllProjectsName allProjectsName;
     private final ChangeQueryBuilder cqb;
     private final ChangeQueryProcessor cqp;
-    private final Provider<ReviewDb> reviewdb;
+    private final Provider<InternalAccountQuery> accountQueryProvider;
     private final GenericFactory identifiedUserFactory;
     private final Gson gson;
 
@@ -72,7 +76,8 @@ public abstract class EventHandler {
             AllProjectsName allProjectsName,
             ChangeQueryBuilder cqb,
             ChangeQueryProcessor cqp,
-            Provider<ReviewDb> reviewdb,
+            Provider<InternalAccountQuery> accountQueryProvider,
+            CapabilityControl.Factory capabilityControlFactory,
             GenericFactory identifiedUserFactory) {
         super();
         this.pluginName = pluginName;
@@ -80,7 +85,7 @@ public abstract class EventHandler {
         this.allProjectsName = allProjectsName;
         this.cqb = cqb;
         this.cqp = cqp;
-        this.reviewdb = reviewdb;
+        this.accountQueryProvider = accountQueryProvider;
         this.identifiedUserFactory = identifiedUserFactory;
         this.gson = new GsonBuilder().create();
     }
@@ -173,17 +178,34 @@ public abstract class EventHandler {
         return new ArrayList<>(notifiedUsers);
     }
 
-    private Set<Integer> getWatchers(NotifyType type, ChangeData change) {
+    public final Set<Integer> getWatchers(NotifyType type, ChangeData change) {
         Set<Integer> watchers = new HashSet<>();
         try {
-            for (AccountProjectWatch w : reviewdb.get().accountProjectWatches()
-                    .byProject(change.project())) {
-                add(watchers, w, type, change);
+            Set<Account.Id> projectWatchers = new HashSet<>();
+            for (AccountState a : accountQueryProvider.get().byWatchedProject(
+                    change.project())) {
+                Account.Id accountId = a.getAccount().getId();
+                for (Map.Entry<ProjectWatchKey, Set<NotifyType>> e : a.getProjectWatches().entrySet()) {
+                    if (change.project().equals(e.getKey().project())
+                            && add(watchers, accountId, e.getKey(), e.getValue(), type, change)) {
+                        // We only want to prevent matching All-Projects if this filter hits
+                        projectWatchers.add(accountId);
+                    }
+                }
             }
-            for (AccountProjectWatch w : reviewdb.get().accountProjectWatches()
-                    .byProject(this.allProjectsName)) {
-                add(watchers, w, type, change);
+
+            for (AccountState a : accountQueryProvider.get().byWatchedProject(
+                    allProjectsName)) {
+              for (Map.Entry<ProjectWatchKey, Set<NotifyType>> e : a.getProjectWatches().entrySet()) {
+                if (allProjectsName.equals(e.getKey().project())) {
+                  Account.Id accountId = a.getAccount().getId();
+                  if (!projectWatchers.contains(accountId)) {
+                    add(watchers, accountId, e.getKey(), e.getValue(), type, change);
+                  }
+                }
+              }
             }
+
         } catch (OrmException ex) {
             log.error(String.format(
                     "[%s] Failed to obtain watchers", pluginName), ex);
@@ -191,16 +213,17 @@ public abstract class EventHandler {
         return watchers;
     }
 
-    private boolean add(Set<Integer> watchers, AccountProjectWatch w,
-            NotifyType type, ChangeData change) throws OrmException {
-        IdentifiedUser user = identifiedUserFactory.create(w.getAccountId());
+    private boolean add(Set<Integer> watchers, Account.Id accountId,
+            ProjectWatchKey key, Set<NotifyType> watchedTypes, NotifyType type,
+            ChangeData change) throws OrmException {
+        IdentifiedUser user = identifiedUserFactory.create(accountId);
 
         try {
-            if (filterMatch(user, w.getFilter(), change)) {
+            if (filterMatch(user, key.filter(), change)) {
                 // If we are set to notify on this type, add the user.
                 // Otherwise, still return true to stop notifications for this user.
-                if (w.isNotify(type)) {
-                    watchers.add(w.getAccountId().get());
+                if (watchedTypes.contains(type)) {
+                    watchers.add(accountId.get());
                 }
                 return true;
             }

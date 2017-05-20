@@ -18,10 +18,11 @@ package com.ruesga.gerrit.plugins.fcm.handlers;
 import com.google.gerrit.extensions.annotations.PluginName;
 import com.google.gerrit.extensions.common.AccountInfo;
 import com.google.gerrit.extensions.events.AssigneeChangedListener;
-import com.google.gerrit.reviewdb.client.AccountProjectWatch.NotifyType;
-import com.google.gerrit.reviewdb.server.ReviewDb;
 import com.google.gerrit.server.IdentifiedUser.GenericFactory;
+import com.google.gerrit.server.account.CapabilityControl;
+import com.google.gerrit.server.account.WatchConfig.NotifyType;
 import com.google.gerrit.server.config.AllProjectsName;
+import com.google.gerrit.server.query.account.InternalAccountQuery;
 import com.google.gerrit.server.query.change.ChangeQueryBuilder;
 import com.google.gerrit.server.query.change.ChangeQueryProcessor;
 import com.google.gson.annotations.SerializedName;
@@ -46,13 +47,15 @@ public class AssigneeChangedEventHandler extends EventHandler
             AllProjectsName allProjectsName,
             ChangeQueryBuilder cqb,
             ChangeQueryProcessor cqp,
-            Provider<ReviewDb> reviewdb,
+            Provider<InternalAccountQuery> accountQueryProvider,
+            CapabilityControl.Factory capabilityControlFactory,
             GenericFactory identifiedUserFactory) {
         super(pluginName,
                 uploader,
                 allProjectsName,
                 cqb, cqp,
-                reviewdb,
+                accountQueryProvider,
+                capabilityControlFactory,
                 identifiedUserFactory);
     }
 
