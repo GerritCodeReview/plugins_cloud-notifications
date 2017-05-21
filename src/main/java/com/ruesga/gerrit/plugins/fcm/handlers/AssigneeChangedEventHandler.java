@@ -60,7 +60,7 @@ public class AssigneeChangedEventHandler extends EventHandler
     }
 
     protected int getEventType() {
-        return CloudNotificationEvents.TOPIC_CHANGED_EVENT;
+        return CloudNotificationEvents.ASSIGNEE_CHANGED_EVENT;
     }
 
     protected NotifyType getNotifyType() {
