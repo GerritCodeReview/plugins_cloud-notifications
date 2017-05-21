@@ -116,7 +116,7 @@ This request requires an authenticated call and is only valid if account-id is t
       "responseMode": "NOTIFICATION"
     }
 
-As a response, this method returs the registered *CloudNotificationInfo* entity (see below).
+As a response, this method returns the registered *CloudNotificationInfo* entity (see below).
 
 *Response*
 
@@ -211,6 +211,10 @@ Enumeration of available events to notify to the client device.
 `PATCHSET_CREATED_EVENT = 0x100`
 
 `TOPIC_CHANGED_EVENT = 0x200`
+
+`ASSIGNEE_CHANGED_EVENT = 0x800`
+
+`VOTE_DELETED_EVENT = 0x1000`
 
 ***
 

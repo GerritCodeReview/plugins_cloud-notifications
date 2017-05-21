@@ -33,6 +33,7 @@ import com.google.gerrit.extensions.events.ReviewerAddedListener;
 import com.google.gerrit.extensions.events.ReviewerDeletedListener;
 import com.google.gerrit.extensions.events.RevisionCreatedListener;
 import com.google.gerrit.extensions.events.TopicEditedListener;
+import com.google.gerrit.extensions.events.VoteDeletedListener;
 import com.google.gerrit.extensions.registration.DynamicMap;
 import com.google.gerrit.extensions.registration.DynamicSet;
 import com.google.gerrit.extensions.restapi.RestApiModule;
@@ -51,6 +52,7 @@ import com.ruesga.gerrit.plugins.fcm.handlers.ReviewerAddedEventHandler;
 import com.ruesga.gerrit.plugins.fcm.handlers.ReviewerDeletedEventHandler;
 import com.ruesga.gerrit.plugins.fcm.handlers.RevisionCreatedEventHandler;
 import com.ruesga.gerrit.plugins.fcm.handlers.TopicEditedEventHandler;
+import com.ruesga.gerrit.plugins.fcm.handlers.VoteDeletedEventHandler;
 import com.ruesga.gerrit.plugins.fcm.server.DeleteToken;
 import com.ruesga.gerrit.plugins.fcm.server.Devices;
 import com.ruesga.gerrit.plugins.fcm.server.GetCloudNotificationsConfigInfo;
@@ -99,6 +101,8 @@ public class ApiModule extends RestApiModule {
                 .to(RevisionCreatedEventHandler.class);
         DynamicSet.bind(binder(), TopicEditedListener.class)
                 .to(TopicEditedEventHandler.class);
+        DynamicSet.bind(binder(), VoteDeletedListener.class)
+                .to(VoteDeletedEventHandler.class);
 
         // Configure the Rest API
         DynamicMap.mapOf(binder(), DEVICE_KIND);
@@ -112,3 +116,4 @@ public class ApiModule extends RestApiModule {
         delete(TOKEN_KIND).to(DeleteToken.class);
     }
 }
+
