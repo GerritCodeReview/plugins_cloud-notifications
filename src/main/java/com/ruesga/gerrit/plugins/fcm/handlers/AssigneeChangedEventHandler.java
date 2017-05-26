@@ -74,10 +74,15 @@ public class AssigneeChangedEventHandler extends EventHandler
         assignee._new = event.getChange().assignee;
         Notification notification = createNotification(event);
         notification.extra = getSerializer().toJson(assignee);
-        notification.body = formatAccount(event.getWho())
-                + " change assignee to "
-                + formatAccount(event.getChange().assignee)
-                + " on this change";
+        if (assignee._new == null) {
+            notification.body = formatAccount(event.getWho())
+                    + " unassigned " + formatAccount(assignee.old)
+                    + " from this change";
+        } else {
+            notification.body = formatAccount(event.getWho())
+                    + " assigned " + formatAccount(assignee._new)
+                    + " to this change";
+        }
 
         notify(notification, event);
     }
