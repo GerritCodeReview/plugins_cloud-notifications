@@ -26,7 +26,7 @@ public class DeviceResource extends AccountResource {
 
     private final String device;
 
-    public DeviceResource(IdentifiedUser user, String device) {
+    DeviceResource(IdentifiedUser user, String device) {
       super(user);
       this.device = device;
     }

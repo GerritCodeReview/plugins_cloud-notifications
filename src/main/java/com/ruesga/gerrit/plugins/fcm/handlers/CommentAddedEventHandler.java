@@ -15,14 +15,14 @@
  */
 package com.ruesga.gerrit.plugins.fcm.handlers;
 
-import org.apache.commons.lang.StringUtils;
-
 import com.google.gerrit.extensions.annotations.PluginName;
 import com.google.gerrit.extensions.events.CommentAddedListener;
+import com.google.gerrit.server.AnonymousUser;
 import com.google.gerrit.server.IdentifiedUser.GenericFactory;
-import com.google.gerrit.server.account.CapabilityControl;
-import com.google.gerrit.server.account.WatchConfig.NotifyType;
+import com.google.gerrit.server.account.GroupBackend;
+import com.google.gerrit.server.account.ProjectWatches.NotifyType;
 import com.google.gerrit.server.config.AllProjectsName;
+import com.google.gerrit.server.project.ProjectCache;
 import com.google.gerrit.server.query.account.InternalAccountQuery;
 import com.google.gerrit.server.query.change.ChangeQueryBuilder;
 import com.google.gerrit.server.query.change.ChangeQueryProcessor;
@@ -31,6 +31,8 @@ import com.google.inject.Provider;
 import com.ruesga.gerrit.plugins.fcm.messaging.Notification;
 import com.ruesga.gerrit.plugins.fcm.rest.CloudNotificationEvents;
 import com.ruesga.gerrit.plugins.fcm.workers.FcmUploaderWorker;
+
+import org.apache.commons.lang.StringUtils;
 
 public class CommentAddedEventHandler extends EventHandler
         implements CommentAddedListener {
@@ -42,16 +44,20 @@ public class CommentAddedEventHandler extends EventHandler
             AllProjectsName allProjectsName,
             ChangeQueryBuilder cqb,
             ChangeQueryProcessor cqp,
+            ProjectCache projectCache,
+            GroupBackend groupBackend,
             Provider<InternalAccountQuery> accountQueryProvider,
-            CapabilityControl.Factory capabilityControlFactory,
-            GenericFactory identifiedUserFactory) {
+            GenericFactory identifiedUserFactory,
+            Provider<AnonymousUser> anonymousProvider) {
         super(pluginName,
                 uploader,
                 allProjectsName,
                 cqb, cqp,
+                projectCache,
+                groupBackend,
                 accountQueryProvider,
-                capabilityControlFactory,
-                identifiedUserFactory);
+                identifiedUserFactory,
+                anonymousProvider);
     }
 
     protected int getEventType() {
@@ -66,11 +72,11 @@ public class CommentAddedEventHandler extends EventHandler
     public void onCommentAdded(Event event) {
         Notification notification = createNotification(event);
         if (event.getComment() != null) {
-            notification.extra =
-                    StringUtils.abbreviate(event.getComment(), 250);
+          notification.extra =
+              StringUtils.abbreviate(event.getComment(), 250);
         }
         notification.body = formatAccount(event.getWho())
-                + " commented on this change";
+            + " commented on this change";
 
         notify(notification, event);
     }

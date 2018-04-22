@@ -24,7 +24,7 @@ public class TokenResource extends DeviceResource {
 
     private final String token;
 
-    public TokenResource(DeviceResource rsrc, String token) {
+    TokenResource(DeviceResource rsrc, String token) {
       super(rsrc.getUser(), rsrc.getDevice());
       this.token = token;
     }

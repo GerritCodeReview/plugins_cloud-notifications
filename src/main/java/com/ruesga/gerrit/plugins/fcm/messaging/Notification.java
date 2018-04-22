@@ -35,7 +35,7 @@ public class Notification {
 
     @Override
     public Object clone() {
-        Notification other = new Notification();
+      Notification other = new Notification();
         other.when = when;
         other.who = who;
         other.token = token;

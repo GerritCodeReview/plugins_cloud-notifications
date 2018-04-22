@@ -29,11 +29,10 @@ gerrit_plugin(
   resources = RESOURCES,
   manifest_entries = [
     'Gerrit-PluginName: cloud-notifications',
-    'Gerrit-ApiVersion: 2.14-SNAPSHOT',
+    'Gerrit-ApiVersion: 2.15',
     'Gerrit-Module: com.ruesga.gerrit.plugins.fcm.ApiModule',
     'Implementation-Title: Firebase Cloud Notifications Plugin',
-    'Implementation-URL: https://gerrit.googlesource.com/plugins/cloud-notifications',
-    'Implementation-Version: 2.14-SNAPSHOT'
+    'Implementation-URL: https://gerrit.googlesource.com/plugins/cloud-notifications'
   ],
   deps = DEPS
 )

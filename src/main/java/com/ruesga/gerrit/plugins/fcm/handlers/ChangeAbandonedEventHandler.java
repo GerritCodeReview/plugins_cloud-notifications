@@ -17,10 +17,12 @@ package com.ruesga.gerrit.plugins.fcm.handlers;
 
 import com.google.gerrit.extensions.annotations.PluginName;
 import com.google.gerrit.extensions.events.ChangeAbandonedListener;
+import com.google.gerrit.server.AnonymousUser;
 import com.google.gerrit.server.IdentifiedUser.GenericFactory;
-import com.google.gerrit.server.account.CapabilityControl;
-import com.google.gerrit.server.account.WatchConfig.NotifyType;
+import com.google.gerrit.server.account.GroupBackend;
+import com.google.gerrit.server.account.ProjectWatches.NotifyType;
 import com.google.gerrit.server.config.AllProjectsName;
+import com.google.gerrit.server.project.ProjectCache;
 import com.google.gerrit.server.query.account.InternalAccountQuery;
 import com.google.gerrit.server.query.change.ChangeQueryBuilder;
 import com.google.gerrit.server.query.change.ChangeQueryProcessor;
@@ -35,21 +37,25 @@ public class ChangeAbandonedEventHandler extends EventHandler
 
     @Inject
     public ChangeAbandonedEventHandler(
-            @PluginName String pluginName,
+          @PluginName String pluginName,
             FcmUploaderWorker uploader,
             AllProjectsName allProjectsName,
             ChangeQueryBuilder cqb,
             ChangeQueryProcessor cqp,
+            ProjectCache projectCache,
+            GroupBackend groupBackend,
             Provider<InternalAccountQuery> accountQueryProvider,
-            CapabilityControl.Factory capabilityControlFactory,
-            GenericFactory identifiedUserFactory) {
+            GenericFactory identifiedUserFactory,
+            Provider<AnonymousUser> anonymousProvider) {
         super(pluginName,
                 uploader,
                 allProjectsName,
                 cqb, cqp,
+                projectCache,
+                groupBackend,
                 accountQueryProvider,
-                capabilityControlFactory,
-                identifiedUserFactory);
+                identifiedUserFactory,
+                anonymousProvider);
     }
 
     protected int getEventType() {

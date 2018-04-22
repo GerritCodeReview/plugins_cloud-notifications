@@ -16,11 +16,13 @@
 package com.ruesga.gerrit.plugins.fcm.handlers;
 
 import com.google.gerrit.extensions.annotations.PluginName;
-import com.google.gerrit.extensions.events.DraftPublishedListener;
+import com.google.gerrit.extensions.events.WorkInProgressStateChangedListener;
+import com.google.gerrit.server.AnonymousUser;
 import com.google.gerrit.server.IdentifiedUser.GenericFactory;
+import com.google.gerrit.server.account.GroupBackend;
+import com.google.gerrit.server.account.ProjectWatches.NotifyType;
 import com.google.gerrit.server.config.AllProjectsName;
-import com.google.gerrit.server.account.CapabilityControl;
-import com.google.gerrit.server.account.WatchConfig.NotifyType;
+import com.google.gerrit.server.project.ProjectCache;
 import com.google.gerrit.server.query.account.InternalAccountQuery;
 import com.google.gerrit.server.query.change.ChangeQueryBuilder;
 import com.google.gerrit.server.query.change.ChangeQueryProcessor;
@@ -30,30 +32,34 @@ import com.ruesga.gerrit.plugins.fcm.messaging.Notification;
 import com.ruesga.gerrit.plugins.fcm.rest.CloudNotificationEvents;
 import com.ruesga.gerrit.plugins.fcm.workers.FcmUploaderWorker;
 
-public class DraftPublishedEventHandler extends EventHandler
-        implements DraftPublishedListener {
+public class WIPStateChangedEventHandler extends EventHandler
+        implements WorkInProgressStateChangedListener {
 
     @Inject
-    public DraftPublishedEventHandler(
+    public WIPStateChangedEventHandler(
             @PluginName String pluginName,
             FcmUploaderWorker uploader,
             AllProjectsName allProjectsName,
             ChangeQueryBuilder cqb,
             ChangeQueryProcessor cqp,
+            ProjectCache projectCache,
+            GroupBackend groupBackend,
             Provider<InternalAccountQuery> accountQueryProvider,
-            CapabilityControl.Factory capabilityControlFactory,
-            GenericFactory identifiedUserFactory) {
+            GenericFactory identifiedUserFactory,
+            Provider<AnonymousUser> anonymousProvider) {
         super(pluginName,
                 uploader,
                 allProjectsName,
                 cqb, cqp,
+                projectCache,
+                groupBackend,
                 accountQueryProvider,
-                capabilityControlFactory,
-                identifiedUserFactory);
+                identifiedUserFactory,
+                anonymousProvider);
     }
 
     protected int getEventType() {
-        return CloudNotificationEvents.DRAFT_PUBLISHED_EVENT;
+        return CloudNotificationEvents.WIP_STATE_CHANGED_EVENT;
     }
 
     protected NotifyType getNotifyType() {
@@ -61,11 +67,11 @@ public class DraftPublishedEventHandler extends EventHandler
     }
 
     @Override
-    public void onDraftPublished(Event event) {
+    public void onWorkInProgressStateChanged(Event event) {
         Notification notification = createNotification(event);
         notification.body = formatAccount(event.getWho())
-                + " published a draft on this change";
-
+                + " change state of this change to " +
+                    (safeBoolean(event.getChange().isPrivate) ? "WIP" : "ready");
         notify(notification, event);
     }
 

@@ -17,10 +17,12 @@ package com.ruesga.gerrit.plugins.fcm.handlers;
 
 import com.google.gerrit.extensions.annotations.PluginName;
 import com.google.gerrit.extensions.events.HashtagsEditedListener;
+import com.google.gerrit.server.AnonymousUser;
 import com.google.gerrit.server.IdentifiedUser.GenericFactory;
-import com.google.gerrit.server.account.CapabilityControl;
-import com.google.gerrit.server.account.WatchConfig.NotifyType;
+import com.google.gerrit.server.account.GroupBackend;
+import com.google.gerrit.server.account.ProjectWatches.NotifyType;
 import com.google.gerrit.server.config.AllProjectsName;
+import com.google.gerrit.server.project.ProjectCache;
 import com.google.gerrit.server.query.account.InternalAccountQuery;
 import com.google.gerrit.server.query.change.ChangeQueryBuilder;
 import com.google.gerrit.server.query.change.ChangeQueryProcessor;
@@ -46,16 +48,20 @@ public class HashtagsEditedEventHandler extends EventHandler
             AllProjectsName allProjectsName,
             ChangeQueryBuilder cqb,
             ChangeQueryProcessor cqp,
+            ProjectCache projectCache,
+            GroupBackend groupBackend,
             Provider<InternalAccountQuery> accountQueryProvider,
-            CapabilityControl.Factory capabilityControlFactory,
-            GenericFactory identifiedUserFactory) {
+            GenericFactory identifiedUserFactory,
+            Provider<AnonymousUser> anonymousProvider) {
         super(pluginName,
                 uploader,
                 allProjectsName,
                 cqb, cqp,
+                projectCache,
+                groupBackend,
                 accountQueryProvider,
-                capabilityControlFactory,
-                identifiedUserFactory);
+                identifiedUserFactory,
+                anonymousProvider);
     }
 
     protected int getEventType() {
@@ -70,12 +76,10 @@ public class HashtagsEditedEventHandler extends EventHandler
     public void onHashtagsEdited(Event event) {
         HashtagsInfo hashtags = new HashtagsInfo();
         if (event.getRemovedHashtags() != null) {
-            hashtags.removed = event.getRemovedHashtags().toArray(
-                    new String[event.getRemovedHashtags().size()]);
+            hashtags.removed = event.getRemovedHashtags().toArray(new String[0]);
         }
         if (event.getAddedHashtags() != null) {
-            hashtags.added = event.getAddedHashtags().toArray(
-                    new String[event.getAddedHashtags().size()]);
+            hashtags.added = event.getAddedHashtags().toArray(new String[0]);
         }
         Notification notification = createNotification(event);
         notification.extra = getSerializer().toJson(hashtags);

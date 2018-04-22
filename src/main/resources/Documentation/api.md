@@ -200,7 +200,7 @@ Enumeration of available events to notify to the client device.
 
 `COMMENT_ADDED_EVENT = 0x08`
 
-`DRAFT_PUBLISHED_EVENT = 0x10`
+`DRAFT_PUBLISHED_EVENT = 0x10  (deprecated in 2.15)`
 
 `HASHTAG_CHANGED_EVENT = 0x20`
 
@@ -215,6 +215,10 @@ Enumeration of available events to notify to the client device.
 `ASSIGNEE_CHANGED_EVENT = 0x800`
 
 `VOTE_DELETED_EVENT = 0x1000`
+
+`PRIVATE_STATE_CHANGED_EVENT = 0x2000`
+
+`WIP_STATE_CHANGED_EVENT = 0x4000`
 
 ***
 

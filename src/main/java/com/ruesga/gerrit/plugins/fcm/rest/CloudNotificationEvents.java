@@ -21,7 +21,7 @@ public class CloudNotificationEvents {
     public static final int CHANGE_RESTORED_EVENT = 0x04;
     public static final int CHANGE_REVERTED_EVENT = 0x08;
     public static final int COMMENT_ADDED_EVENT = 0x10;
-    public static final int DRAFT_PUBLISHED_EVENT = 0x20;
+    // removed => public static final int DRAFT_PUBLISHED_EVENT = 0x20;
     public static final int HASHTAG_CHANGED_EVENT = 0x40;
     public static final int REVIEWER_ADDED_EVENT = 0x80;
     public static final int REVIEWER_DELETED_EVENT = 0x100;
@@ -29,4 +29,6 @@ public class CloudNotificationEvents {
     public static final int TOPIC_CHANGED_EVENT = 0x400;
     public static final int ASSIGNEE_CHANGED_EVENT = 0x800;
     public static final int VOTE_DELETED_EVENT = 0x1000;
+    public static final int PRIVATE_STATE_CHANGED_EVENT = 0x2000;
+    public static final int WIP_STATE_CHANGED_EVENT = 0x4000;
 }

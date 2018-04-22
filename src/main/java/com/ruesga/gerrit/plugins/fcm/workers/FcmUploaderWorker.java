@@ -17,7 +17,6 @@ package com.ruesga.gerrit.plugins.fcm.workers;
 
 import java.io.BufferedReader;
 import java.io.DataOutputStream;
-import java.io.IOException;
 import java.io.InputStreamReader;
 import java.net.HttpURLConnection;
 import java.net.URL;
@@ -92,12 +91,7 @@ public class FcmUploaderWorker {
         }
 
         for (final Integer accountId : notifiedAccounts) {
-            this.executor.submit(new Runnable() {
-                @Override
-                public void run() {
-                    asyncNotify(accountId, notification);
-                }
-            });
+            this.executor.submit(() -> asyncNotify(accountId, notification));
         }
     }
 
@@ -133,33 +127,19 @@ public class FcmUploaderWorker {
             conn.setRequestProperty(
                     "Content-Length", Integer.toString(data.length()));
 
-            DataOutputStream os = new DataOutputStream(conn.getOutputStream());
-            try {
+            try (DataOutputStream os = new DataOutputStream(conn.getOutputStream())) {
                 os.write(data.getBytes());
                 os.flush();
-            } finally {
-                try {
-                    os.close();
-                } catch (IOException ex) {
-                    // Ignore
-                }
             }
 
             int responseCode = conn.getResponseCode();
             if (responseCode == 200) {
                 StringBuilder response = new StringBuilder();
-                BufferedReader in = new BufferedReader(
-                        new InputStreamReader(conn.getInputStream()));
-                try {
+                try (BufferedReader in = new BufferedReader(
+                        new InputStreamReader(conn.getInputStream()))) {
                     String inputLine;
                     while ((inputLine = in.readLine()) != null) {
                         response.append(inputLine);
-                    }
-                } finally {
-                    try {
-                        in.close();
-                    } catch (IOException ex) {
-                        // Ignore
                     }
                 }
 
@@ -280,12 +260,8 @@ public class FcmUploaderWorker {
             log.debug("[%s] Retry fcm notification to %s after %d seconds",
                     pluginName, submit.request.to, retryAfter);
         }
-        this.delayedExecutor.schedule(new Runnable() {
-            @Override
-            public void run() {
-                sendNotification(submit);
-            }
-        }, retryAfter, TimeUnit.SECONDS);
+        this.delayedExecutor.schedule(() ->
+                sendNotification(submit), retryAfter, TimeUnit.SECONDS);
     }
 
 }

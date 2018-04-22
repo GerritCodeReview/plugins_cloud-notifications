@@ -20,39 +20,12 @@ import static com.google.gerrit.server.config.ConfigResource.CONFIG_KIND;
 import static com.ruesga.gerrit.plugins.fcm.server.DeviceResource.DEVICE_KIND;
 import static com.ruesga.gerrit.plugins.fcm.server.TokenResource.TOKEN_KIND;
 
-import com.google.gerrit.extensions.events.AssigneeChangedListener;
-import com.google.gerrit.extensions.events.ChangeAbandonedListener;
-import com.google.gerrit.extensions.events.ChangeMergedListener;
-import com.google.gerrit.extensions.events.ChangeRestoredListener;
-import com.google.gerrit.extensions.events.ChangeRevertedListener;
-import com.google.gerrit.extensions.events.CommentAddedListener;
-import com.google.gerrit.extensions.events.DraftPublishedListener;
-import com.google.gerrit.extensions.events.HashtagsEditedListener;
-import com.google.gerrit.extensions.events.LifecycleListener;
-import com.google.gerrit.extensions.events.ReviewerAddedListener;
-import com.google.gerrit.extensions.events.ReviewerDeletedListener;
-import com.google.gerrit.extensions.events.RevisionCreatedListener;
-import com.google.gerrit.extensions.events.TopicEditedListener;
-import com.google.gerrit.extensions.events.VoteDeletedListener;
+import com.google.gerrit.extensions.events.*;
 import com.google.gerrit.extensions.registration.DynamicMap;
 import com.google.gerrit.extensions.registration.DynamicSet;
 import com.google.gerrit.extensions.restapi.RestApiModule;
 import com.google.inject.Scopes;
-import com.ruesga.gerrit.plugins.fcm.DatabaseManager;
-import com.ruesga.gerrit.plugins.fcm.handlers.AssigneeChangedEventHandler;
-import com.ruesga.gerrit.plugins.fcm.handlers.ChangeAbandonedEventHandler;
-import com.ruesga.gerrit.plugins.fcm.handlers.ChangeMergedEventHandler;
-import com.ruesga.gerrit.plugins.fcm.handlers.ChangeRestoredEventHandler;
-import com.ruesga.gerrit.plugins.fcm.handlers.ChangeRevertedEventHandler;
-import com.ruesga.gerrit.plugins.fcm.handlers.CommentAddedEventHandler;
-import com.ruesga.gerrit.plugins.fcm.handlers.DraftPublishedEventHandler;
-import com.ruesga.gerrit.plugins.fcm.handlers.HashtagsEditedEventHandler;
-import com.ruesga.gerrit.plugins.fcm.handlers.LifeCycleHandler;
-import com.ruesga.gerrit.plugins.fcm.handlers.ReviewerAddedEventHandler;
-import com.ruesga.gerrit.plugins.fcm.handlers.ReviewerDeletedEventHandler;
-import com.ruesga.gerrit.plugins.fcm.handlers.RevisionCreatedEventHandler;
-import com.ruesga.gerrit.plugins.fcm.handlers.TopicEditedEventHandler;
-import com.ruesga.gerrit.plugins.fcm.handlers.VoteDeletedEventHandler;
+import com.ruesga.gerrit.plugins.fcm.handlers.*;
 import com.ruesga.gerrit.plugins.fcm.server.DeleteToken;
 import com.ruesga.gerrit.plugins.fcm.server.Devices;
 import com.ruesga.gerrit.plugins.fcm.server.GetCloudNotificationsConfigInfo;
@@ -89,8 +62,6 @@ public class ApiModule extends RestApiModule {
                 .to(ChangeRevertedEventHandler.class);
         DynamicSet.bind(binder(), CommentAddedListener.class)
                 .to(CommentAddedEventHandler.class);
-        DynamicSet.bind(binder(), DraftPublishedListener.class)
-                .to(DraftPublishedEventHandler.class);
         DynamicSet.bind(binder(), HashtagsEditedListener.class)
                 .to(HashtagsEditedEventHandler.class);
         DynamicSet.bind(binder(), ReviewerDeletedListener.class)
@@ -103,6 +74,10 @@ public class ApiModule extends RestApiModule {
                 .to(TopicEditedEventHandler.class);
         DynamicSet.bind(binder(), VoteDeletedListener.class)
                 .to(VoteDeletedEventHandler.class);
+        DynamicSet.bind(binder(), PrivateStateChangedListener.class)
+                .to(PrivateStateChangedEventHandler.class);
+        DynamicSet.bind(binder(), WorkInProgressStateChangedListener.class)
+                .to(WIPStateChangedEventHandler.class);
 
         // Configure the Rest API
         DynamicMap.mapOf(binder(), DEVICE_KIND);

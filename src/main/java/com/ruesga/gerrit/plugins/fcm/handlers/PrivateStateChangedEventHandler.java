@@ -16,7 +16,7 @@
 package com.ruesga.gerrit.plugins.fcm.handlers;
 
 import com.google.gerrit.extensions.annotations.PluginName;
-import com.google.gerrit.extensions.events.ReviewerDeletedListener;
+import com.google.gerrit.extensions.events.PrivateStateChangedListener;
 import com.google.gerrit.server.AnonymousUser;
 import com.google.gerrit.server.IdentifiedUser.GenericFactory;
 import com.google.gerrit.server.account.GroupBackend;
@@ -32,11 +32,11 @@ import com.ruesga.gerrit.plugins.fcm.messaging.Notification;
 import com.ruesga.gerrit.plugins.fcm.rest.CloudNotificationEvents;
 import com.ruesga.gerrit.plugins.fcm.workers.FcmUploaderWorker;
 
-public class ReviewerDeletedEventHandler extends EventHandler
-        implements ReviewerDeletedListener {
+public class PrivateStateChangedEventHandler extends EventHandler
+        implements PrivateStateChangedListener {
 
     @Inject
-    public ReviewerDeletedEventHandler(
+    public PrivateStateChangedEventHandler(
             @PluginName String pluginName,
             FcmUploaderWorker uploader,
             AllProjectsName allProjectsName,
@@ -59,21 +59,19 @@ public class ReviewerDeletedEventHandler extends EventHandler
     }
 
     protected int getEventType() {
-        return CloudNotificationEvents.REVIEWER_DELETED_EVENT;
+        return CloudNotificationEvents.PRIVATE_STATE_CHANGED_EVENT;
     }
 
     protected NotifyType getNotifyType() {
-        return NotifyType.ALL;
+        return NotifyType.NEW_PATCHSETS;
     }
 
     @Override
-    public void onReviewerDeleted(Event event) {
+    public void onPrivateStateChanged(Event event) {
         Notification notification = createNotification(event);
-        notification.extra = getSerializer().toJson(event.getReviewer());
         notification.body = formatAccount(event.getWho())
-                + " removed " + formatAccount(event.getReviewer())
-                + " as reviewer on this changed";
-
+                + " change state of this change to " +
+                      (safeBoolean(event.getChange().isPrivate) ? "private" : "public");
         notify(notification, event);
     }
 

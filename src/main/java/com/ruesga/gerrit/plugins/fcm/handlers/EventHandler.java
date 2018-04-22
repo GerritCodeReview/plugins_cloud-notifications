@@ -22,10 +22,9 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-import org.apache.commons.lang.StringUtils;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
+import com.google.common.collect.ImmutableSet;
+import com.google.gerrit.common.data.GroupDescription;
+import com.google.gerrit.common.data.GroupReference;
 import com.google.gerrit.extensions.annotations.PluginName;
 import com.google.gerrit.extensions.api.changes.NotifyHandling;
 import com.google.gerrit.extensions.client.ReviewerState;
@@ -33,22 +32,28 @@ import com.google.gerrit.extensions.common.AccountInfo;
 import com.google.gerrit.extensions.common.ChangeInfo;
 import com.google.gerrit.extensions.events.ChangeEvent;
 import com.google.gerrit.extensions.events.RevisionEvent;
+import com.google.gerrit.index.query.Predicate;
+import com.google.gerrit.index.query.QueryParseException;
+import com.google.gerrit.index.query.QueryResult;
 import com.google.gerrit.reviewdb.client.Account;
+import com.google.gerrit.reviewdb.client.AccountGroup;
+import com.google.gerrit.server.AnonymousUser;
 import com.google.gerrit.server.CurrentUser;
 import com.google.gerrit.server.IdentifiedUser;
 import com.google.gerrit.server.IdentifiedUser.GenericFactory;
 import com.google.gerrit.server.account.AccountState;
-import com.google.gerrit.server.account.CapabilityControl;
-import com.google.gerrit.server.account.WatchConfig.NotifyType;
-import com.google.gerrit.server.account.WatchConfig.ProjectWatchKey;
+import com.google.gerrit.server.account.GroupBackend;
+import com.google.gerrit.server.account.ProjectWatches.NotifyType;
+import com.google.gerrit.server.account.ProjectWatches.ProjectWatchKey;
 import com.google.gerrit.server.config.AllProjectsName;
-import com.google.gerrit.server.query.Predicate;
-import com.google.gerrit.server.query.QueryParseException;
-import com.google.gerrit.server.query.QueryResult;
+import com.google.gerrit.server.git.NotifyConfig;
+import com.google.gerrit.server.project.ProjectCache;
+import com.google.gerrit.server.project.ProjectState;
 import com.google.gerrit.server.query.account.InternalAccountQuery;
 import com.google.gerrit.server.query.change.ChangeData;
 import com.google.gerrit.server.query.change.ChangeQueryBuilder;
 import com.google.gerrit.server.query.change.ChangeQueryProcessor;
+import com.google.gerrit.server.query.change.SingleGroupUser;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.google.gwtorm.server.OrmException;
@@ -56,9 +61,13 @@ import com.google.inject.Provider;
 import com.ruesga.gerrit.plugins.fcm.messaging.Notification;
 import com.ruesga.gerrit.plugins.fcm.workers.FcmUploaderWorker;
 
+import org.apache.commons.lang.StringUtils;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 public abstract class EventHandler {
 
-    static final Logger log =
+    private static final Logger log =
             LoggerFactory.getLogger(EventHandler.class);
 
     private final String pluginName;
@@ -66,8 +75,11 @@ public abstract class EventHandler {
     private final AllProjectsName allProjectsName;
     private final ChangeQueryBuilder cqb;
     private final ChangeQueryProcessor cqp;
+    private final ProjectCache projectCache;
+    private final GroupBackend groupBackend;
     private final Provider<InternalAccountQuery> accountQueryProvider;
     private final GenericFactory identifiedUserFactory;
+    private final Provider<AnonymousUser> anonymousProvider;
     private final Gson gson;
 
     public EventHandler(
@@ -76,17 +88,22 @@ public abstract class EventHandler {
             AllProjectsName allProjectsName,
             ChangeQueryBuilder cqb,
             ChangeQueryProcessor cqp,
+            ProjectCache projectCache,
+            GroupBackend groupBackend,
             Provider<InternalAccountQuery> accountQueryProvider,
-            CapabilityControl.Factory capabilityControlFactory,
-            GenericFactory identifiedUserFactory) {
+            GenericFactory identifiedUserFactory,
+            Provider<AnonymousUser> anonymousProvider) {
         super();
         this.pluginName = pluginName;
         this.uploader = uploader;
         this.allProjectsName = allProjectsName;
         this.cqb = cqb;
         this.cqp = cqp;
+        this.projectCache = projectCache;
+        this.groupBackend = groupBackend;
         this.accountQueryProvider = accountQueryProvider;
         this.identifiedUserFactory = identifiedUserFactory;
+        this.anonymousProvider = anonymousProvider;
         this.gson = new GsonBuilder().create();
     }
 
@@ -94,7 +111,7 @@ public abstract class EventHandler {
 
     protected abstract NotifyType getNotifyType();
 
-    protected Gson getSerializer() {
+    Gson getSerializer() {
         return this.gson;
     }
 
@@ -169,7 +186,10 @@ public abstract class EventHandler {
 
         // 3.- Watchers
         ChangeData changeData = obtainChangeData(change);
-        notifiedUsers.addAll(getWatchers(getNotifyType(), changeData));
+        if (changeData != null) {
+            notifiedUsers.addAll(getWatchers(getNotifyType(), changeData,
+                    !safeBoolean(change.workInProgress) && !safeBoolean(change.isPrivate)));
+        }
 
         // 4.- Remove the author of this event (he doesn't need to get
         // the notification)
@@ -178,14 +198,14 @@ public abstract class EventHandler {
         return new ArrayList<>(notifiedUsers);
     }
 
-    public final Set<Integer> getWatchers(NotifyType type, ChangeData change) {
+    private Set<Integer> getWatchers(NotifyType type, ChangeData change, boolean includeWatchersFromNotifyConfig) {
         Set<Integer> watchers = new HashSet<>();
         try {
             Set<Account.Id> projectWatchers = new HashSet<>();
             for (AccountState a : accountQueryProvider.get().byWatchedProject(
                     change.project())) {
                 Account.Id accountId = a.getAccount().getId();
-                for (Map.Entry<ProjectWatchKey, Set<NotifyType>> e : a.getProjectWatches().entrySet()) {
+                for (Map.Entry<ProjectWatchKey, ImmutableSet<NotifyType>> e : a.getProjectWatches().entrySet()) {
                     if (change.project().equals(e.getKey().project())
                             && add(watchers, accountId, e.getKey(), e.getValue(), type, change)) {
                         // We only want to prevent matching All-Projects if this filter hits
@@ -194,16 +214,37 @@ public abstract class EventHandler {
                 }
             }
 
-            for (AccountState a : accountQueryProvider.get().byWatchedProject(
-                    allProjectsName)) {
-              for (Map.Entry<ProjectWatchKey, Set<NotifyType>> e : a.getProjectWatches().entrySet()) {
-                if (allProjectsName.equals(e.getKey().project())) {
-                  Account.Id accountId = a.getAccount().getId();
-                  if (!projectWatchers.contains(accountId)) {
-                    add(watchers, accountId, e.getKey(), e.getValue(), type, change);
-                  }
+            for (AccountState a : accountQueryProvider.get().byWatchedProject(allProjectsName)) {
+              for (Map.Entry<ProjectWatchKey, ImmutableSet<NotifyType>> e : a.getProjectWatches().entrySet()) {
+                    if (allProjectsName.equals(e.getKey().project())) {
+                        Account.Id accountId = a.getAccount().getId();
+                        if (!projectWatchers.contains(accountId)) {
+                            add(watchers, accountId, e.getKey(), e.getValue(), type, change);
+                        }
+                    }
                 }
-              }
+            }
+
+            if (includeWatchersFromNotifyConfig) {
+                ProjectState projectState = projectCache.get(change.project());
+                if (projectState != null) {
+                    for (ProjectState state : projectState.tree()) {
+                        for (NotifyConfig nc : state.getConfig().getNotifyConfigs()) {
+                            if (nc.isNotify(type)) {
+                                try {
+                                    add(watchers, nc, change);
+                                } catch (QueryParseException e) {
+                                    log.warn(
+                                        "Project {} has invalid notify {} filter \"{}\": {}",
+                                        state.getName(),
+                                        nc.getName(),
+                                        nc.getFilter(),
+                                        e.getMessage());
+                                }
+                            }
+                        }
+                    }
+                }
             }
 
         } catch (OrmException ex) {
@@ -233,11 +274,27 @@ public abstract class EventHandler {
         return false;
     }
 
+    private void add(Set<Integer> watchers, NotifyConfig nc, ChangeData change)
+            throws OrmException, QueryParseException {
+        for (GroupReference ref : nc.getGroups()) {
+            CurrentUser user = new SingleGroupUser(ref.getUUID());
+            if (filterMatch(user, nc.getFilter(), change)) {
+                deliverToMembers(watchers, ref.getUUID());
+            }
+        }
+    }
+
     private boolean filterMatch(
             CurrentUser user, String filter, ChangeData change)
             throws OrmException, QueryParseException {
-        ChangeQueryBuilder qb = cqb.asUser(user);
-        Predicate<ChangeData> p = qb.is_visible();
+        ChangeQueryBuilder qb;
+        Predicate<ChangeData> p = null;
+        if (user == null) {
+            qb = cqb.asUser(anonymousProvider.get());
+        } else {
+            qb = cqb.asUser(user);
+            p = qb.is_visible();
+        }
 
         if (filter != null) {
             Predicate<ChangeData> filterPredicate = qb.parse(filter);
@@ -269,6 +326,37 @@ public abstract class EventHandler {
         return null;
     }
 
+    private void deliverToMembers(Set<Integer> watchers, AccountGroup.UUID startUUID) {
+        Set<AccountGroup.UUID> seen = new HashSet<>();
+        List<AccountGroup.UUID> q = new ArrayList<>();
+
+        seen.add(startUUID);
+        q.add(startUUID);
+
+        while (!q.isEmpty()) {
+            AccountGroup.UUID uuid = q.remove(q.size() - 1);
+            GroupDescription.Basic group = groupBackend.get(uuid);
+            if (group == null) {
+                continue;
+            }
+
+            if (!(group instanceof GroupDescription.Internal)) {
+                // Non-internal groups cannot be expanded by the server.
+                continue;
+            }
+
+            GroupDescription.Internal ig = (GroupDescription.Internal) group;
+            for (Account.Id id : ig.getMembers()) {
+                watchers.add(id.get());
+            }
+            for (AccountGroup.UUID m : ig.getSubgroups()) {
+                if (seen.add(m)) {
+                    q.add(m);
+                }
+            }
+        }
+    }
+
     protected String formatAccount(AccountInfo account) {
         if (account.name != null) {
             return account.name;
@@ -277,5 +365,9 @@ public abstract class EventHandler {
             return account.username;
         }
         return account.email;
+    }
+
+    boolean safeBoolean(Boolean value) {
+        return value != null && value;
     }
 }
