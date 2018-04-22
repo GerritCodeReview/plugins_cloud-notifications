@@ -15,8 +15,9 @@
  */
 package com.ruesga.gerrit.plugins.fcm.handlers;
 
-import java.util.Collection;
+import java.util.List;
 
+import com.google.common.collect.ImmutableList;
 import com.google.gerrit.extensions.annotations.PluginName;
 import com.google.gerrit.extensions.common.ApprovalInfo;
 import com.google.gerrit.extensions.events.VoteDeletedListener;
@@ -93,9 +94,9 @@ public class VoteDeletedEventHandler extends EventHandler
         VoteDeletedInfo info = toVoteDeletedInfo(event);
         final String msg;
         if (info.votes.length == 1) {
-            msg = " remove " + info.votes[0].vote + " by " + info.votes[0].account;
+            msg = " removed " + info.votes[0].vote + " by " + info.votes[0].account;
         } else {
-            msg = " remove multiple votes";
+            msg = " removed multiple votes";
         }
         Notification notification = createNotification(event);
         notification.extra = getSerializer().toJson(info);
@@ -106,15 +107,25 @@ public class VoteDeletedEventHandler extends EventHandler
 
     private VoteDeletedInfo toVoteDeletedInfo(Event event) {
         VoteDeletedInfo info = new VoteDeletedInfo();
-        Collection<ApprovalInfo> approvals = event.getOldApprovals().values();
+        List<ApprovalInfo> approvals = ImmutableList.copyOf(event.getOldApprovals().values());
         int count = approvals.size();
         info.votes = new VoteDeletedEntryInfo[count];
-        for (int i = 0; i < count; i++)
-        for (ApprovalInfo approval : event.getOldApprovals().values()) {
+        for (int i = 0; i < count; i++) {
+            ApprovalInfo approval = approvals.get(i);
             info.votes[i] = new VoteDeletedEntryInfo();
-            info.votes[i].vote = approval.tag + + approval.value;
+            info.votes[i].vote = toVote(approval);
             info.votes[i].account = formatAccount(approval);
         }
         return info;
+    }
+
+    private String toVote(ApprovalInfo approval) {
+        if (approval.value == null || approval.value == 0) {
+            return approval.tag;
+        } else if (approval.value > 0) {
+            return approval.tag + "+" + approval.value;
+        } else {
+            return approval.tag + approval.value;
+        }
     }
 }
