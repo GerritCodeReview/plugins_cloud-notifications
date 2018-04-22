@@ -22,9 +22,9 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-import com.google.common.collect.ImmutableSet;
 import com.google.gerrit.common.data.GroupDescription;
 import com.google.gerrit.common.data.GroupReference;
+import com.google.gerrit.common.errors.NoSuchGroupException;
 import com.google.gerrit.extensions.annotations.PluginName;
 import com.google.gerrit.extensions.api.changes.NotifyHandling;
 import com.google.gerrit.extensions.client.ReviewerState;
@@ -37,16 +37,19 @@ import com.google.gerrit.index.query.QueryParseException;
 import com.google.gerrit.index.query.QueryResult;
 import com.google.gerrit.reviewdb.client.Account;
 import com.google.gerrit.reviewdb.client.AccountGroup;
+import com.google.gerrit.reviewdb.server.ReviewDb;
 import com.google.gerrit.server.AnonymousUser;
 import com.google.gerrit.server.CurrentUser;
 import com.google.gerrit.server.IdentifiedUser;
 import com.google.gerrit.server.IdentifiedUser.GenericFactory;
 import com.google.gerrit.server.account.AccountState;
 import com.google.gerrit.server.account.GroupBackend;
-import com.google.gerrit.server.account.ProjectWatches.NotifyType;
-import com.google.gerrit.server.account.ProjectWatches.ProjectWatchKey;
+import com.google.gerrit.server.account.GroupIncludeCache;
+import com.google.gerrit.server.account.WatchConfig.NotifyType;
+import com.google.gerrit.server.account.WatchConfig.ProjectWatchKey;
 import com.google.gerrit.server.config.AllProjectsName;
 import com.google.gerrit.server.git.NotifyConfig;
+import com.google.gerrit.server.group.Groups;
 import com.google.gerrit.server.project.ProjectCache;
 import com.google.gerrit.server.project.ProjectState;
 import com.google.gerrit.server.query.account.InternalAccountQuery;
@@ -77,22 +80,28 @@ public abstract class EventHandler {
     private final ChangeQueryProcessor cqp;
     private final ProjectCache projectCache;
     private final GroupBackend groupBackend;
+    private final GroupIncludeCache groupIncludes;
+    private final Provider<ReviewDb> db;
     private final Provider<InternalAccountQuery> accountQueryProvider;
     private final GenericFactory identifiedUserFactory;
     private final Provider<AnonymousUser> anonymousProvider;
+    private final Groups groups;
     private final Gson gson;
 
     public EventHandler(
-            @PluginName String pluginName,
-            FcmUploaderWorker uploader,
-            AllProjectsName allProjectsName,
-            ChangeQueryBuilder cqb,
-            ChangeQueryProcessor cqp,
-            ProjectCache projectCache,
-            GroupBackend groupBackend,
-            Provider<InternalAccountQuery> accountQueryProvider,
-            GenericFactory identifiedUserFactory,
-            Provider<AnonymousUser> anonymousProvider) {
+        @PluginName String pluginName,
+        FcmUploaderWorker uploader,
+        AllProjectsName allProjectsName,
+        ChangeQueryBuilder cqb,
+        ChangeQueryProcessor cqp,
+        ProjectCache projectCache,
+        GroupIncludeCache groupIncludes,
+        GroupBackend groupBackend,
+        Provider<ReviewDb> db,
+        Provider<InternalAccountQuery> accountQueryProvider,
+        GenericFactory identifiedUserFactory,
+        Provider<AnonymousUser> anonymousProvider,
+        Groups groups) {
         super();
         this.pluginName = pluginName;
         this.uploader = uploader;
@@ -100,10 +109,13 @@ public abstract class EventHandler {
         this.cqb = cqb;
         this.cqp = cqp;
         this.projectCache = projectCache;
+        this.groupIncludes = groupIncludes;
         this.groupBackend = groupBackend;
+        this.db = db;
         this.accountQueryProvider = accountQueryProvider;
         this.identifiedUserFactory = identifiedUserFactory;
         this.anonymousProvider = anonymousProvider;
+        this.groups = groups;
         this.gson = new GsonBuilder().create();
     }
 
@@ -205,7 +217,7 @@ public abstract class EventHandler {
             for (AccountState a : accountQueryProvider.get().byWatchedProject(
                     change.project())) {
                 Account.Id accountId = a.getAccount().getId();
-                for (Map.Entry<ProjectWatchKey, ImmutableSet<NotifyType>> e : a.getProjectWatches().entrySet()) {
+                for (Map.Entry<ProjectWatchKey, Set<NotifyType>> e : a.getProjectWatches().entrySet()) {
                     if (change.project().equals(e.getKey().project())
                             && add(watchers, accountId, e.getKey(), e.getValue(), type, change)) {
                         // We only want to prevent matching All-Projects if this filter hits
@@ -215,7 +227,7 @@ public abstract class EventHandler {
             }
 
             for (AccountState a : accountQueryProvider.get().byWatchedProject(allProjectsName)) {
-              for (Map.Entry<ProjectWatchKey, ImmutableSet<NotifyType>> e : a.getProjectWatches().entrySet()) {
+              for (Map.Entry<ProjectWatchKey, Set<NotifyType>> e : a.getProjectWatches().entrySet()) {
                     if (allProjectsName.equals(e.getKey().project())) {
                         Account.Id accountId = a.getAccount().getId();
                         if (!projectWatchers.contains(accountId)) {
@@ -326,7 +338,9 @@ public abstract class EventHandler {
         return null;
     }
 
-    private void deliverToMembers(Set<Integer> watchers, AccountGroup.UUID startUUID) {
+    private void deliverToMembers(Set<Integer> watchers, AccountGroup.UUID startUUID)
+            throws OrmException {
+        ReviewDb db = this.db.get();
         Set<AccountGroup.UUID> seen = new HashSet<>();
         List<AccountGroup.UUID> q = new ArrayList<>();
 
@@ -337,21 +351,23 @@ public abstract class EventHandler {
             AccountGroup.UUID uuid = q.remove(q.size() - 1);
             GroupDescription.Basic group = groupBackend.get(uuid);
             if (group == null) {
-                continue;
+              continue;
             }
 
             if (!(group instanceof GroupDescription.Internal)) {
-                // Non-internal groups cannot be expanded by the server.
-                continue;
+              // Non-internal groups cannot be expanded by the server.
+              continue;
             }
 
             GroupDescription.Internal ig = (GroupDescription.Internal) group;
-            for (Account.Id id : ig.getMembers()) {
-                watchers.add(id.get());
+            try {
+                groups.getMembers(db, ig.getGroupUUID()).forEach(g -> watchers.add(g.get()));
+            } catch (NoSuchGroupException e) {
+                continue;
             }
-            for (AccountGroup.UUID m : ig.getSubgroups()) {
+            for (AccountGroup.UUID m : groupIncludes.subgroupsOf(uuid)) {
                 if (seen.add(m)) {
-                    q.add(m);
+                  q.add(m);
                 }
             }
         }

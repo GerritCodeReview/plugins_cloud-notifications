@@ -17,11 +17,14 @@ package com.ruesga.gerrit.plugins.fcm.handlers;
 
 import com.google.gerrit.extensions.annotations.PluginName;
 import com.google.gerrit.extensions.events.CommentAddedListener;
+import com.google.gerrit.reviewdb.server.ReviewDb;
 import com.google.gerrit.server.AnonymousUser;
 import com.google.gerrit.server.IdentifiedUser.GenericFactory;
 import com.google.gerrit.server.account.GroupBackend;
-import com.google.gerrit.server.account.ProjectWatches.NotifyType;
+import com.google.gerrit.server.account.GroupIncludeCache;
+import com.google.gerrit.server.account.WatchConfig.NotifyType;
 import com.google.gerrit.server.config.AllProjectsName;
+import com.google.gerrit.server.group.Groups;
 import com.google.gerrit.server.project.ProjectCache;
 import com.google.gerrit.server.query.account.InternalAccountQuery;
 import com.google.gerrit.server.query.change.ChangeQueryBuilder;
@@ -45,19 +48,25 @@ public class CommentAddedEventHandler extends EventHandler
             ChangeQueryBuilder cqb,
             ChangeQueryProcessor cqp,
             ProjectCache projectCache,
+            GroupIncludeCache groupIncludes,
             GroupBackend groupBackend,
+            Provider<ReviewDb> db,
             Provider<InternalAccountQuery> accountQueryProvider,
             GenericFactory identifiedUserFactory,
-            Provider<AnonymousUser> anonymousProvider) {
+            Provider<AnonymousUser> anonymousProvider,
+            Groups groups) {
         super(pluginName,
                 uploader,
                 allProjectsName,
                 cqb, cqp,
                 projectCache,
+                groupIncludes,
                 groupBackend,
+                db,
                 accountQueryProvider,
                 identifiedUserFactory,
-                anonymousProvider);
+                anonymousProvider,
+                groups);
     }
 
     protected int getEventType() {
