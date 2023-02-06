@@ -6,7 +6,7 @@ the Gerrit instance how send the notification. In addition, an app can configure
 
 A client application can unregistered a device (and stop receiving notifications) from the Gerrit instance using the *Unregister Cloud Notification* method.
 
-Client applications must use a combination of fcm device identifier + a unique local account token, so they can register to listen notification for different accounts on this Gerrit instance. Token must 
+Client applications must use a combination of fcm device identifier + a unique local account token, so they can register to listen notification for different accounts on this Gerrit instance. Token must
 
 
 REST API
@@ -32,7 +32,7 @@ This method returns a *CloudNotificationsConfigInfo* entity (see below).
     HTTP1.1 200 OK
     Content-Disposition: attachment
     Content-Type: application/json; charset=UTF-8
-    
+
     )]}'
     {
         "senderId": "322112333"
@@ -56,7 +56,7 @@ This request requires an authenticated call and only returns information if acco
     HTTP1.1 200 OK
     Content-Disposition: attachment
     Content-Type: application/json; charset=UTF-8
-    
+
     )]}'
     [
      {
@@ -86,7 +86,7 @@ This request requires an authenticated call and only returns information if acco
     HTTP1.1 200 OK
     Content-Disposition: attachment
     Content-Type: application/json; charset=UTF-8
-    
+
     )]}'
     {
       "device": "bk3RNwTe3H0:CI2k_HHwgIpoDKCIZvvDMExUdFQ3P1",
@@ -109,7 +109,7 @@ This request requires an authenticated call and is only valid if account-id is t
 
     POST /accounts/self/devices/bk3RNwTe3H0:CI2k_HHwgIpoDKCIZvvDMExUdFQ3P1/tokens
     Content-Type: application/json
-    
+
     {
       "token": "f986567456f107d0eb2d84c85ac5aed2",
       "events": 8,
@@ -123,7 +123,7 @@ As a response, this method returns the registered *CloudNotificationInfo* entity
     HTTP1.1 200 OK
     Content-Disposition: attachment
     Content-Type: application/json; charset=UTF-8
-    
+
     )]}'
     {
       "deviceId": "bk3RNwTe3H0:CI2k_HHwgIpoDKCIZvvDMExUdFQ3P1",
@@ -211,8 +211,6 @@ Enumeration of available events to notify to the client device.
 `PATCHSET_CREATED_EVENT = 0x100`
 
 `TOPIC_CHANGED_EVENT = 0x200`
-
-`ASSIGNEE_CHANGED_EVENT = 0x800`
 
 `VOTE_DELETED_EVENT = 0x1000`
 

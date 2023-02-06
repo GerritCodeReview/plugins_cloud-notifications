@@ -50,8 +50,6 @@ public class ApiModule extends RestApiModule {
         // Configure listener handlers
         DynamicSet.bind(binder(), LifecycleListener.class)
                 .to(LifeCycleHandler.class);
-        DynamicSet.bind(binder(), AssigneeChangedListener.class)
-                .to(AssigneeChangedEventHandler.class);
         DynamicSet.bind(binder(), ChangeAbandonedListener.class)
                 .to(ChangeAbandonedEventHandler.class);
         DynamicSet.bind(binder(), ChangeMergedListener.class)
